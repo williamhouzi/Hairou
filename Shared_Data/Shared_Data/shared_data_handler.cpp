@@ -46,7 +46,7 @@ void shared_area_init(void)
 }
 
 
-Shared_MCB_Wrapper shared_basic_value_init(uint16_t key, Shared_Value_Type value_type)
+Shared_MCB_Wrapper shared_basic_value_init(int16_t key, Shared_Value_Type value_type)
 {
 	Shared_MCB_Wrapper curr_mcb_info = get_shared_mcb_info(key);
 
@@ -64,7 +64,7 @@ Shared_MCB_Wrapper shared_basic_value_init(uint16_t key, Shared_Value_Type value
 					Shared_Basic_MCB new_value_info = { p_dest, value_type };
 					Shared_Basic_Pair new_pair = { key, new_value_info };
 
-					uint16_t key_seq = shared_basic_dict_append(new_pair);
+					int16_t key_seq = shared_basic_dict_append(new_pair);
 
 					curr_mcb_info.unique_key = key;
 					curr_mcb_info.p_value_begin = p_dest;
@@ -97,7 +97,7 @@ Shared_MCB_Wrapper shared_basic_value_init(uint16_t key, Shared_Value_Type value
 	return curr_mcb_info;
 }
 
-Shared_MCB_Wrapper shared_struct_init(uint16_t key, uint16_t value_length, Shared_Value_Type value_type)
+Shared_MCB_Wrapper shared_struct_init(int16_t key, uint16_t value_length, Shared_Value_Type value_type)
 {
 	Shared_MCB_Wrapper curr_mcb_info = get_shared_mcb_info(key);
 
@@ -113,7 +113,7 @@ Shared_MCB_Wrapper shared_struct_init(uint16_t key, uint16_t value_length, Share
 					Shared_Basic_MCB new_value_info = { p_dest, shared_struct_t };
 					Shared_Basic_Pair new_pair = { key, new_value_info };
 
-					uint16_t key_seq = shared_basic_dict_append(new_pair);
+					int16_t key_seq = shared_basic_dict_append(new_pair);
 
 					curr_mcb_info.unique_key = key;
 					curr_mcb_info.p_value_begin = p_dest;
@@ -146,7 +146,7 @@ Shared_MCB_Wrapper shared_struct_init(uint16_t key, uint16_t value_length, Share
 	return curr_mcb_info;
 }
 
-Shared_MCB_Wrapper shared_array_init(uint16_t key, uint16_t array_size, Shared_Value_Type container_type, Shared_Value_Type node_type)
+Shared_MCB_Wrapper shared_array_init(int16_t key, uint16_t array_size, Shared_Value_Type container_type, Shared_Value_Type node_type)
 {
 	Shared_MCB_Wrapper curr_mcb_info = get_shared_mcb_info(key);
 
@@ -171,7 +171,7 @@ Shared_MCB_Wrapper shared_array_init(uint16_t key, uint16_t array_size, Shared_V
 						Shared_Container_MCB container_mcb = { p_dest, container_type, node_type, 0 , array_size };
 						Shared_Container_Pair container_pair = { key, container_mcb };
 
-						uint16_t key_seq = shared_container_dict_append(container_pair);
+						int16_t key_seq = shared_container_dict_append(container_pair);
 						curr_mcb_info.unique_key = key;
 						curr_mcb_info.p_value_begin = p_dest;
 						curr_mcb_info.value_type = container_type;
@@ -211,9 +211,8 @@ Shared_MCB_Wrapper shared_array_init(uint16_t key, uint16_t array_size, Shared_V
 	return curr_mcb_info;
 }
 
-Shared_MCB_Wrapper shared_list_init(uint16_t key, uint16_t max_list_size, Shared_Value_Type container_type, Shared_Value_Type node_type)
+Shared_MCB_Wrapper shared_list_init(int16_t key, uint16_t max_list_size, Shared_Value_Type container_type, Shared_Value_Type node_type)
 {
-	Shared_MCB_Wrapper result = { -1, NULL, unknown_dict, 0, unknown_type, unknown_type, 0, 0 };
 	Shared_MCB_Wrapper curr_mcb_info = get_shared_mcb_info(key);
 
 	if (container_type == shared_list_t)
@@ -226,8 +225,8 @@ Shared_MCB_Wrapper shared_list_init(uint16_t key, uint16_t max_list_size, Shared
 				if (get_basic_type_length(node_type) != 0)
 				{
 					// value + p_next;
-					uint16_t node_length = get_basic_type_length(node_type) + sizeof(uint8_t*);
-					uint16_t list_length = node_length * max_list_size;
+					uint16_t list_node_length = get_basic_type_length(node_type) + sizeof(uint8_t*);
+					uint16_t list_length = list_node_length * max_list_size;
 
 					// p_free + p_used + list_length
 					Shared_List_Director p_director;
@@ -241,26 +240,38 @@ Shared_MCB_Wrapper shared_list_init(uint16_t key, uint16_t max_list_size, Shared
 						uint8_t* p_writer = p_dest;
 						p_director.p_free_hub = p_dest + sizeof(p_director);
 						p_director.p_active_hub = NULL;
-						write_shared_area(p_dest, &p_director, sizeof(p_director));
+						shared_area_cpy(p_dest, &p_director, sizeof(p_director));
 
 						uint16_t curr_seq = 0;
 						uint8_t* p_curr = p_director.p_free_hub;
-						uint8_t* p_next = p_curr + node_length;
+						uint8_t* p_next = p_curr + list_node_length;
 						while (curr_seq < max_list_size)
 						{
 							uint8_t empty = 0;
 							// TODO: equal to 0;
-							write_shared_area(p_curr, &empty, (uint16_t)(get_basic_type_length(node_type)));
-							write_shared_area(p_curr + (uint16_t)(get_basic_type_length(node_type)), &p_next, sizeof(p_next));
+							uint16_t node_type_lens = get_basic_type_length(node_type);
+							uint8_t* p_cursor = p_curr;
+							while (node_type_lens-- > 0)
+							{
+								shared_area_cpy(p_cursor, &empty, 1);
+								p_cursor++;
+							}
+
+							if (curr_seq == (max_list_size - 1))
+							{
+								p_next = NULL;
+							}
+							shared_area_cpy(p_cursor, &p_next, sizeof(p_next));
+							
 							p_curr = p_next;
-							p_next = p_next + node_length;
+							p_next = p_next + list_node_length;
 
 							curr_seq += 1;
 						}
 
 						Shared_Container_MCB container_mcb = { p_dest, container_type, node_type,  0 , max_list_size };
 						Shared_Container_Pair container_pair = { key, container_mcb };
-						uint16_t key_seq = shared_container_dict_append(container_pair);
+						int16_t key_seq = shared_container_dict_append(container_pair);
 
 						curr_mcb_info.unique_key = key;
 						curr_mcb_info.p_value_begin = p_dest;
@@ -298,12 +309,11 @@ Shared_MCB_Wrapper shared_list_init(uint16_t key, uint16_t max_list_size, Shared
 	}
 
 
-	return result;
+	return curr_mcb_info;
 }
 
-Shared_MCB_Wrapper shared_fifo_init(uint16_t key, uint16_t max_fifo_size, Shared_Value_Type container_type, Shared_Value_Type node_type)
+Shared_MCB_Wrapper shared_fifo_init(int16_t key, uint16_t max_fifo_size, Shared_Value_Type container_type, Shared_Value_Type node_type)
 {
-	Shared_MCB_Wrapper result = { -1, NULL, unknown_dict, 0, unknown_type, unknown_type, 0, 0 };
 	Shared_MCB_Wrapper curr_mcb_info = get_shared_mcb_info(key);
 
 	if (container_type == shared_fifo_t)
@@ -327,12 +337,12 @@ Shared_MCB_Wrapper shared_fifo_init(uint16_t key, uint16_t max_fifo_size, Shared
 					if (p_dest != NULL)
 					{
 
-						write_shared_area(p_dest, &fifo_director, sizeof(fifo_director));
+						shared_area_cpy(p_dest, &fifo_director, sizeof(fifo_director));
 						// TODO: Write data in area
 
 						Shared_Container_MCB container_mcb = { p_dest, container_type, node_type, 0 , max_fifo_size };
 						Shared_Container_Pair container_pair = { key, container_mcb };
-						uint16_t key_seq = shared_container_dict_append(container_pair);
+						int16_t key_seq = shared_container_dict_append(container_pair);
 
 						curr_mcb_info.unique_key = key;
 						curr_mcb_info.p_value_begin = p_dest;
@@ -374,7 +384,7 @@ Shared_MCB_Wrapper shared_fifo_init(uint16_t key, uint16_t max_fifo_size, Shared
 
 
 // -------------------------------------------------Update.-------------------------------------------------------
-Shared_MCB_Wrapper shared_basic_value_update(uint16_t key, void* p_source, Shared_Value_Type type)
+Shared_MCB_Wrapper shared_basic_value_update(int16_t key, void* p_source, Shared_Value_Type type)
 {
 	Shared_MCB_Wrapper curr_mcb_info = get_shared_mcb_info(key);
 
@@ -388,7 +398,7 @@ Shared_MCB_Wrapper shared_basic_value_update(uint16_t key, void* p_source, Share
 			{
 				void* p_dest = (void*)(curr_mcb_info.p_value_begin);
 				//TODO: allocate.
-				if (write_shared_area(p_dest, p_source, value_length))
+				if (shared_area_cpy(p_dest, p_source, value_length))
 				{
 					printf("success to update existed key_value.\n");
 				}
@@ -411,7 +421,7 @@ Shared_MCB_Wrapper shared_basic_value_update(uint16_t key, void* p_source, Share
 	return curr_mcb_info;
 }
 
-Shared_MCB_Wrapper update_shared_struct(uint16_t key, void * p_source, uint16_t struct_length)
+Shared_MCB_Wrapper update_shared_struct(int16_t key, void * p_source, uint16_t struct_length)
 {
 	Shared_MCB_Wrapper curr_mcb_info = get_shared_mcb_info(key);
 
@@ -425,7 +435,7 @@ Shared_MCB_Wrapper update_shared_struct(uint16_t key, void * p_source, uint16_t 
 			{
 				void* p_dest = curr_mcb_info.p_value_begin;
 				//TODO: allocate.
-				if (write_shared_area(p_dest, p_source, value_length))
+				if (shared_area_cpy(p_dest, p_source, value_length))
 				{
 					printf("success to update existed key_value.\n");
 				}
@@ -448,7 +458,7 @@ Shared_MCB_Wrapper update_shared_struct(uint16_t key, void * p_source, uint16_t 
 	return curr_mcb_info;
 }
 
-uint8_t * shared_array_update(uint16_t key, uint8_t seq, uint8_t * p_value, uint16_t value_length)
+uint8_t * shared_array_update(int16_t key, uint8_t seq, void * p_value, uint16_t value_length)
 {
 	uint8_t* result = NULL;
 	//Shared_MCB_Wrapper result =
@@ -456,7 +466,7 @@ uint8_t * shared_array_update(uint16_t key, uint8_t seq, uint8_t * p_value, uint
 	//	-1,           	// int16_t unique_key
 	//	NULL,         	// void *p_begin
 	//	unknown_dict, 	// Shared_Dict_Type dict_type
-	//	0,           	// uint16_t key_seq
+	//	0,           	// int16_t key_seq
 	//	unknown_type, 	// Shared_Value_Type value_type
 	//	unknown_type, 	// Shared_Value_Type item_type
 	//	0,            	// uint8_t container_size
@@ -475,7 +485,7 @@ uint8_t * shared_array_update(uint16_t key, uint8_t seq, uint8_t * p_value, uint
 					uint16_t node_length = get_basic_type_length(curr_mcb_info.item_type);
 					uint8_t* p_dest = curr_mcb_info.p_value_begin + seq * node_length;
 
-					write_shared_area(p_dest, p_value, value_length);
+					shared_area_cpy(p_dest, p_value, value_length);
 
 					result = p_dest;
 
@@ -505,7 +515,7 @@ uint8_t * shared_array_update(uint16_t key, uint8_t seq, uint8_t * p_value, uint
 
 }
 
-uint8_t* shared_list_move_forward(uint16_t key, uint8_t* p_current_node)
+uint8_t* shared_list_move_forward(int16_t key, uint8_t* p_current_node)
 {
 	uint8_t* result = NULL;
 
@@ -518,8 +528,10 @@ uint8_t* shared_list_move_forward(uint16_t key, uint8_t* p_current_node)
 			if (curr_mcb_info.value_type == shared_list_t)
 			{
 				uint16_t value_length = get_basic_type_length(curr_mcb_info.item_type);
-
-				uint8_t* result = (uint8_t*)(*(p_current_node + value_length));
+				uint8_t* p_cursor = p_current_node + value_length;
+				uint32_t* p_test = (uint32_t*)(p_cursor);
+				uint32_t test = *p_test;
+				result = (uint8_t*)(test);
 
 			}
 			else
@@ -541,7 +553,7 @@ uint8_t* shared_list_move_forward(uint16_t key, uint8_t* p_current_node)
 }
 
 
-uint8_t* shared_fifo_front(uint16_t key)
+uint8_t* shared_fifo_front(int16_t key)
 {
 	uint8_t* result = NULL;
 
@@ -578,7 +590,7 @@ uint8_t* shared_fifo_front(uint16_t key)
 }
 
 
-uint8_t* shared_fifo_back(uint16_t key)
+uint8_t* shared_fifo_back(int16_t key)
 {
 	uint8_t* result = NULL;
 
@@ -616,7 +628,7 @@ uint8_t* shared_fifo_back(uint16_t key)
 
 // ------------------------------------------------Append.-------------------------------------------------------
 
-void shared_list_push_back(uint16_t key, uint8_t* p_value, uint16_t value_length)
+void shared_list_push_back(int16_t key, void* p_value, uint16_t value_length)
 {
 	Shared_MCB_Wrapper curr_mcb_info = get_shared_mcb_info(key);
 	if (curr_mcb_info.unique_key != -1) // key existed
@@ -633,21 +645,31 @@ void shared_list_push_back(uint16_t key, uint8_t* p_value, uint16_t value_length
 
 				uint8_t* p_write_dest = p_director->p_free_hub;
 				uint8_t* p_write_dest_next = shared_list_move_forward(key, p_write_dest);
-				write_shared_area(p_begin, p_write_dest_next, sizeof(uint8_t*));
+				p_director->p_free_hub = p_write_dest_next;
 
-				write_shared_area(p_write_dest, p_value, value_length);
-
+				
+				// write new value.
+				shared_area_cpy(p_write_dest, p_value, value_length);
+				uint8_t* p_end = NULL;
+				shared_area_cpy(p_write_dest + value_length, &p_end, sizeof(uint8_t*));
+				
+				
 				uint8_t* p_active_curr = p_director->p_active_hub;
-				uint8_t* p_active_curr_next_pointer = p_director->p_active_hub;
-				uint8_t* p_active_next = p_active_curr;
-				for (uint16_t i = 0; i < list_size; i++)
+				if (p_active_curr == NULL)
 				{
-					p_active_next = shared_list_move_forward(key, p_active_curr);
-					p_active_curr = p_active_next;
-					p_active_curr_next_pointer = p_active_curr + get_basic_type_length(curr_mcb_info.item_type);
+					p_director->p_active_hub = p_write_dest;
 				}
-
-				p_active_curr_next_pointer = p_write_dest;
+				else
+				{
+					uint8_t* p_active_next = shared_list_move_forward(key, p_active_curr);
+					while (p_active_next != NULL)
+					{
+						p_active_curr = p_active_next;
+						p_active_next = shared_list_move_forward(key, p_active_curr);
+					}
+					uint8_t* p_active_previous_end = p_active_curr;
+					shared_area_cpy(p_active_previous_end + value_length, &p_write_dest, sizeof(uint8_t*));
+				}
 
 				global_shared_dict.shared_container_dict.shared_dict[curr_mcb_info.key_seq_in_dict].mcb.container_size += 1;
 			}
@@ -667,7 +689,7 @@ void shared_list_push_back(uint16_t key, uint8_t* p_value, uint16_t value_length
 	}
 }
 
-void shared_fifo_push_back(uint16_t key, uint8_t* p_value, uint16_t value_length)
+void shared_fifo_push_back(int16_t key, uint8_t* p_value, uint16_t value_length)
 {
 	Shared_MCB_Wrapper curr_mcb_info = get_shared_mcb_info(key);
 	if (curr_mcb_info.unique_key != -1) // key existed
@@ -691,12 +713,12 @@ void shared_fifo_push_back(uint16_t key, uint8_t* p_value, uint16_t value_length
 				uint8_t* p_dest = p_fifo_begin + node_length * dest_seq;
 
 				uint8_t new_tail_seq = (uint8_t)(dest_seq);
-				write_shared_area(p_begin + sizeof(uint8_t), &new_tail_seq, sizeof(uint8_t));
+				shared_area_cpy(p_begin + sizeof(uint8_t), &new_tail_seq, sizeof(uint8_t));
 				
 				if (curr_mcb_info.container_capacity == curr_mcb_info.container_size)
 				{
 					uint8_t new_head_seq = (uint8_t)((head_seq + 1) % capacity);
-					write_shared_area(p_begin, &new_head_seq, sizeof(uint8_t));
+					shared_area_cpy(p_begin, &new_head_seq, sizeof(uint8_t));
 				}
 
 				global_shared_dict.shared_container_dict.shared_dict[curr_mcb_info.key_seq_in_dict].mcb.container_size += 1;
@@ -717,33 +739,112 @@ void shared_fifo_push_back(uint16_t key, uint8_t* p_value, uint16_t value_length
 	}
 }
 // ------------------------------------------------Pop/Remove.---------------------------------------------------
-uint8_t* shared_list_remove(uint16_t key, uint8_t* p_node)
+uint8_t* shared_list_remove(int16_t key, uint8_t* p_node)
 {
 	uint8_t* result = NULL;
+	if (p_node == NULL)
+		return result;
 
 	Shared_MCB_Wrapper curr_mcb_info = get_shared_mcb_info(key);
 	if (curr_mcb_info.unique_key != -1) // key existed
 	{
 		if (curr_mcb_info.value_type == shared_list_t)
 		{
-			if (p_node != NULL)
+			if (curr_mcb_info.container_size > 0)
 			{
+				Shared_List_Director* p_list_dir = (Shared_List_Director*)(curr_mcb_info.p_value_begin);
+				uint8_t* p_active_curr = p_list_dir->p_active_hub;
+				uint8_t* p_active_next = shared_list_move_forward(key, p_active_curr);
+				uint8_t* p_free_header = p_list_dir->p_free_hub;
 
+				if (p_active_curr == p_node)
+				{
+					p_list_dir->p_active_hub = p_active_next;
+
+					uint8_t* p_node_next_pointer = p_node + get_basic_type_length(curr_mcb_info.item_type);
+					shared_area_cpy(p_node_next_pointer, &p_free_header, sizeof(p_free_header));
+					p_list_dir->p_free_hub = p_node;
+
+					uint8_t empty = 0;
+					// TODO: equal to 0;
+					uint16_t node_type_lens = get_basic_type_length(curr_mcb_info.item_type);
+					uint8_t* p_cursor = p_node;
+					while (node_type_lens-- > 0)
+					{
+						shared_area_cpy(p_cursor, &empty, 1);
+						p_cursor++;
+					}
+
+					result = p_active_next;
+
+					global_shared_dict.shared_container_dict.shared_dict[curr_mcb_info.key_seq_in_dict].mcb.container_size -= 1;
+				}
+				else
+				{
+					bool find_node = false;
+					uint16_t list_size = curr_mcb_info.container_size;
+					while (list_size-- > 0)
+					{
+						if (p_active_next == p_node)
+						{
+							uint8_t* p_next_node_pointer = shared_list_move_forward(key, p_node);
+
+							uint8_t* p_active_curr_next_pointer = p_active_curr + get_basic_type_length(curr_mcb_info.item_type);
+							shared_area_cpy(p_active_curr_next_pointer, &p_next_node_pointer, sizeof(p_active_curr_next_pointer));
+
+							uint8_t* p_node_next_pointer = p_node + get_basic_type_length(curr_mcb_info.item_type);
+							shared_area_cpy(p_node_next_pointer, &p_free_header, sizeof(p_free_header));
+							p_list_dir->p_free_hub = p_node;
+
+							find_node = true;
+							result = p_next_node_pointer;
+
+							global_shared_dict.shared_container_dict.shared_dict[curr_mcb_info.key_seq_in_dict].mcb.container_size -= 1;
+
+							break;
+						}
+						else
+						{
+							p_active_curr = p_active_next;
+							p_active_next = shared_list_move_forward(key, p_active_curr);
+						}
+					}
+
+
+
+					if (find_node == false)
+					{
+						printf("failed to remove: fail to find the node.\n");
+					}
+					else
+					{
+						uint8_t empty = 0;
+						// TODO: equal to 0;
+						uint16_t node_type_lens = get_basic_type_length(curr_mcb_info.item_type);
+						uint8_t* p_cursor = p_node;
+						while (node_type_lens-- > 0)
+						{
+							shared_area_cpy(p_cursor, &empty, 1);
+							p_cursor++;
+						}
+					}
+				}
 			}
+			
 		}
 		else
 		{
-			printf("failed to get: container type error.\n");
+			printf("failed to remove: container type error.\n");
 		}
 	}
 	else
 	{
-		printf("failed to set: no key\n");
+		printf("failed to remove: no key\n");
 	}
 	return result;
 }
 
-void shared_fifo_pop(uint16_t key)
+void shared_fifo_pop(int16_t key)
 {
 	Shared_MCB_Wrapper curr_mcb_info = get_shared_mcb_info(key);
 	if (curr_mcb_info.unique_key != -1) // key existed
@@ -756,7 +857,7 @@ void shared_fifo_pop(uint16_t key)
 				uint16_t head_seq = (uint16_t)(p_fifo_director->head_seq);
 				uint16_t capacity = (uint16_t)(curr_mcb_info.container_capacity);
 				uint8_t new_head_seq = (uint8_t)((head_seq + 1) % capacity);
-				write_shared_area(curr_mcb_info.p_value_begin, &new_head_seq, sizeof(uint8_t));
+				shared_area_cpy(curr_mcb_info.p_value_begin, &new_head_seq, sizeof(uint8_t));
 			}
 			else
 			{
@@ -776,14 +877,14 @@ void shared_fifo_pop(uint16_t key)
 
 
 // -------------------------------------------------look up dict------------------------------------------------
-Shared_MCB_Wrapper get_shared_mcb_info(uint16_t shared_key)
+Shared_MCB_Wrapper get_shared_mcb_info(int16_t shared_key)
 {
 	Shared_MCB_Wrapper result =
 	{
 		-1,           	// int16_t unique_key
 		NULL,         	// void *p_begin
 		unknown_dict, 	// Shared_Dict_Type dict_type
-		0,           	// uint16_t key_seq
+		0,           	// int16_t key_seq
 		unknown_type, 	// Shared_Value_Type value_type
 		unknown_type, 	// Shared_Value_Type item_type
 		0,            	// uint8_t container_size
@@ -815,6 +916,7 @@ Shared_MCB_Wrapper get_shared_mcb_info(uint16_t shared_key)
 	{
 		if ((int16_t)(shared_key) == global_shared_dict.shared_container_dict.shared_dict[curr_num].key)
 		{
+			result.unique_key = shared_key;
 			result.p_value_begin = global_shared_dict.shared_container_dict.shared_dict[curr_num].mcb.p_value_begin;
 			result.dict_type = shared_container_dict;
 			result.key_seq_in_dict = curr_num;
@@ -831,7 +933,7 @@ Shared_MCB_Wrapper get_shared_mcb_info(uint16_t shared_key)
 	return result;
 }
 
-bool shared_key_existed(uint16_t shared_key)
+bool shared_key_existed(int16_t shared_key)
 {
 	bool result = false;
 	Shared_MCB_Wrapper value_info = get_shared_mcb_info(shared_key);
@@ -842,9 +944,14 @@ bool shared_key_existed(uint16_t shared_key)
 	return result;
 }
 
+uint8_t * get_shared_array_value(int16_t key, uint16_t seq)
+{
+	return nullptr;
+}
+
 // ------------------------------------------------Get Value.---------------------------------------------------
 
-uint8_t* ref_shared_basic_value(uint16_t key)
+uint8_t* ref_shared_basic_value(int16_t key)
 {
 	uint8_t* result = NULL;
 
@@ -868,7 +975,7 @@ uint8_t* ref_shared_basic_value(uint16_t key)
 	return result;
 }
 
-uint8_t* ref_shared_struct(uint16_t key)
+uint8_t* ref_shared_struct(int16_t key)
 {
 	uint8_t* result = NULL;
 
@@ -891,7 +998,7 @@ uint8_t* ref_shared_struct(uint16_t key)
 	return result;
 }
 
-uint8_t* ref_shared_array(uint16_t key)
+uint8_t* ref_shared_array(int16_t key)
 {
 	uint8_t* result = NULL;
 
@@ -914,7 +1021,7 @@ uint8_t* ref_shared_array(uint16_t key)
 	return result;
 }
 
-uint8_t* ref_shared_array_value(uint16_t key, uint16_t seq)
+uint8_t* ref_shared_array_value(int16_t key, uint16_t seq)
 {
 	uint8_t* result = NULL;
 
@@ -945,7 +1052,7 @@ uint8_t* ref_shared_array_value(uint16_t key, uint16_t seq)
 	return result;
 }
 
-uint8_t* ref_shared_list(uint16_t key)
+uint8_t* ref_shared_list(int16_t key)
 {
 	uint8_t* result = NULL;
 
@@ -973,7 +1080,7 @@ uint8_t* ref_shared_list(uint16_t key)
 	return result;
 }
 
-uint8_t* ref_shared_fifo(uint16_t key)
+uint8_t* ref_shared_fifo(int16_t key)
 {
 	uint8_t* result = NULL;
 
@@ -1030,7 +1137,6 @@ uint16_t shared_container_dict_append(Shared_Container_Pair new_pair)
 	return append_pos;
 }
 
-
 // -------------------------------------------------Area Control.----------------------------------------------------
 uint8_t* shared_malloc(uint16_t size)
 {
@@ -1052,9 +1158,9 @@ void shared_free(void * pointer)
 				
 }
 
-void* write_shared_area(void* p_dest, void* p_source, uint16_t value_length)
+void* shared_area_cpy(void* p_dest, void* p_source, uint16_t value_length)
 {
-	void* result = false;
+	void* result = NULL;
 	if (p_dest == NULL || p_source == NULL || value_length == 0)
 		return NULL;
 
@@ -1135,14 +1241,14 @@ uint16_t available_shared_area_size()
 
 // -------------------------------------------------Tmp----------------------------------------------------
 
-Shared_MCB_Wrapper update_shared_container_value(uint16_t key, void* p_source, uint16_t length, Shared_Value_Type container_type, Shared_Value_Type node_type)
+Shared_MCB_Wrapper update_shared_container_value(int16_t key, void* p_source, uint16_t length, Shared_Value_Type container_type, Shared_Value_Type node_type)
 {
 	Shared_MCB_Wrapper result = { -1, NULL, unknown_dict, 0, unknown_type, unknown_type, 0, 0 };
 
 	return result;
 }
 
-Shared_MCB_Wrapper update_shared_array(uint16_t key, void * p_array, uint16_t array_size, Shared_Value_Type container_type, Shared_Value_Type node_type)
+Shared_MCB_Wrapper update_shared_array(int16_t key, void * p_array, uint16_t array_size, Shared_Value_Type container_type, Shared_Value_Type node_type)
 {
 	Shared_MCB_Wrapper result = { -1, NULL, unknown_dict, 0, unknown_type, unknown_type, 0, 0 };
 	Shared_MCB_Wrapper curr_mcb_info = get_shared_mcb_info(key);
@@ -1160,7 +1266,7 @@ Shared_MCB_Wrapper update_shared_array(uint16_t key, void * p_array, uint16_t ar
 			if (p_dest != NULL)
 			{
 				// TODO: Write data in area
-				if (write_shared_area(p_dest, p_array, array_length))
+				if (shared_area_cpy(p_dest, p_array, array_length))
 				{
 					Shared_Container_MCB container_mcb = { p_dest, container_type, node_type,  array_size , array_size };
 					Shared_Container_Pair container_pair = { key, container_mcb };
@@ -1199,7 +1305,7 @@ Shared_MCB_Wrapper update_shared_array(uint16_t key, void * p_array, uint16_t ar
 
 				void* p_dest = curr_mcb_info.p_value_begin;
 
-				if (write_shared_area(p_dest, p_array, array_length))
+				if (shared_area_cpy(p_dest, p_array, array_length))
 				{
 					printf("success to update existed key_value.\n");
 					result = curr_mcb_info;
@@ -1220,7 +1326,7 @@ Shared_MCB_Wrapper update_shared_array(uint16_t key, void * p_array, uint16_t ar
 	return result;
 }
 
-int16_t shared_dict_array_append(uint16_t key, void * p_array, uint16_t array_size, Shared_Value_Type container_type, Shared_Value_Type node_type)
+int16_t shared_dict_array_append(int16_t key, void * p_array, uint16_t array_size, Shared_Value_Type container_type, Shared_Value_Type node_type)
 {
 	int16_t result = -1;
 	if (available_container_dict_size() > 0)
