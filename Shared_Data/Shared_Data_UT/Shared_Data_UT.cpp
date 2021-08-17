@@ -311,8 +311,32 @@ namespace SharedDataUT
 			
 			Shared_MCB_Wrapper fifo_mcb = get_shared_mcb_info(fifo_key);
 			Assert::AreEqual((uint32_t)(2), (uint32_t)(fifo_mcb.container_size));
+		}
+
+		TEST_METHOD(Test7_Basic_Update_Get)
+		{
+			shared_area_init();
+
+			shared_basic_value_init(0, shared_int8_t);
+			shared_basic_value_init(1, shared_uint16_t);
+			shared_basic_value_init(2, shared_doublt_t);
+
+			int8_t value1 = 0x11;
+			uint16_t value2 = 0x2222;
+			double value3 = 3.33;
+
+			shared_basic_value_update(0, &value1, sizeof(value1));
+			shared_basic_value_update(1, &value2, sizeof(value2));
+			shared_basic_value_update(2, &value3, sizeof(value3));
 
 
+			uint8_t* p_real_value1 = get_shared_basic_value(0);
+			uint8_t* p_real_value2 = get_shared_basic_value(1);
+			uint8_t* p_real_value3 = get_shared_basic_value(2);
+
+			Assert::AreEqual((uint32_t)(value1), (uint32_t)(*(int8_t*)(p_real_value1)));
+			Assert::AreEqual((uint32_t)(value2), (uint32_t)(*(uint16_t*)(p_real_value2)));
+			Assert::AreEqual((double)(value3), *(double*)(p_real_value3));
 		}
 	};
 }

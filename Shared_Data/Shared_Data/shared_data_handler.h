@@ -27,7 +27,7 @@ Shared_MCB_Wrapper shared_fifo_init(int16_t key, uint16_t max_fifo_size, Shared_
 
 
 // ---------------------------Update/Push_back--------------------------
-Shared_MCB_Wrapper shared_basic_value_update(int16_t key, void* p_source, Shared_Value_Type type);
+Shared_MCB_Wrapper shared_basic_value_update(int16_t key, void* p_source, uint16_t value_length);
 
 Shared_MCB_Wrapper update_shared_struct(int16_t key, void * p_source, uint16_t struct_length);
 
@@ -45,6 +45,7 @@ uint8_t* shared_list_remove(int16_t key, uint8_t* p_node);
 void shared_fifo_pop(int16_t key);
 
 // ---------------------------Get Value.--------------------------
+uint8_t* get_shared_basic_value(int16_t key);
 
 uint8_t* get_shared_array_value(int16_t key, uint16_t seq);
 

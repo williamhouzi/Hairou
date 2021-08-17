@@ -384,33 +384,41 @@ Shared_MCB_Wrapper shared_fifo_init(int16_t key, uint16_t max_fifo_size, Shared_
 
 
 // -------------------------------------------------Update.-------------------------------------------------------
-Shared_MCB_Wrapper shared_basic_value_update(int16_t key, void* p_source, Shared_Value_Type type)
+Shared_MCB_Wrapper shared_basic_value_update(int16_t key, void* p_source, uint16_t value_length)
 {
 	Shared_MCB_Wrapper curr_mcb_info = get_shared_mcb_info(key);
 
 	if (curr_mcb_info.unique_key != -1) // no key
 	{
 		// key existed.
-		if (curr_mcb_info.dict_type == shared_basic_dict && curr_mcb_info.value_type == type)
+		if (curr_mcb_info.dict_type == shared_basic_dict)
 		{
-			uint16_t value_length = (uint16_t)(get_basic_type_length(type));
-			if (value_length != 0)
+			uint16_t expected_value_length = (uint16_t)(get_basic_type_length(curr_mcb_info.value_type));
+			if (expected_value_length == value_length)
 			{
-				void* p_dest = (void*)(curr_mcb_info.p_value_begin);
-				//TODO: allocate.
-				if (shared_area_cpy(p_dest, p_source, value_length))
+				if (value_length != 0)
 				{
-					printf("success to update existed key_value.\n");
+					void* p_dest = (void*)(curr_mcb_info.p_value_begin);
+					//TODO: allocate.
+					if (shared_area_cpy(p_dest, p_source, value_length))
+					{
+						printf("success to update existed key_value.\n");
+					}
+				}
+				else
+				{
+					printf("failed to update:  unknown type\n");
 				}
 			}
 			else
 			{
-				printf("failed to update:  unknown type\n");
+				printf("failed to update: error value type \n");
 			}
+
 		}
 		else
 		{
-			printf("failed to update: error Value Type: expected type is %d.\n", curr_mcb_info.value_type);
+			printf("failed to update: error dict type \n");
 		}
 	}
 	else
@@ -973,6 +981,11 @@ bool shared_key_existed(int16_t shared_key)
 		result = true;
 
 	return result;
+}
+
+uint8_t * get_shared_basic_value(int16_t key)
+{
+	return ref_shared_basic_value(key);
 }
 
 uint8_t * get_shared_array_value(int16_t key, uint16_t seq)
