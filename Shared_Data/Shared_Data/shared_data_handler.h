@@ -12,13 +12,11 @@ extern Shared_Area global_shared_area;
 
 
 // -------------------------------Init.--------------------------------
-// dict init
-// shared init
+
 void shared_area_init(void);
 
 Shared_MCB_Wrapper shared_basic_value_init(int16_t key, Shared_Value_Type value_type);
 
-// TODO:
 Shared_MCB_Wrapper shared_struct_init(int16_t key, uint16_t value_length, Shared_Value_Type value_type);
 
 Shared_MCB_Wrapper shared_array_init(int16_t key, uint16_t max_size, Shared_Value_Type container_type, Shared_Value_Type node_type);
@@ -28,32 +26,12 @@ Shared_MCB_Wrapper shared_list_init(int16_t key, uint16_t max_list_size, Shared_
 Shared_MCB_Wrapper shared_fifo_init(int16_t key, uint16_t max_fifo_size, Shared_Value_Type container_type, Shared_Value_Type node_type);
 
 
-// ---------------------------Update.--------------------------
-//Critical Method
-// Append new pair in basic dict. Return key's seq if successed. And return -1 if not.
-// Argus: key. 
-//        p_value. start pointer of source value in share.
-//        type.    type of source value.
+// ---------------------------Update/Push_back--------------------------
 Shared_MCB_Wrapper shared_basic_value_update(int16_t key, void* p_source, Shared_Value_Type type);
-// TODO
-// Append Struct
+
 Shared_MCB_Wrapper update_shared_struct(int16_t key, void * p_source, uint16_t struct_length);
 
 uint8_t* shared_array_update(int16_t key, uint8_t seq, void* p_value, uint16_t value_length);
-
-uint8_t* shared_list_move_forward(int16_t key, uint8_t* p_current_node);
-
-//uint8_t* update_shared_list_value(int16_t key, uint8_t seq, uint8_t* p_value, uint16_t value_length);
-
-uint8_t* shared_fifo_front(int16_t key);
-
-uint8_t* shared_fifo_back(int16_t key);
-
-//uint8_t * shared_fifo_update_value(int16_t key, uint8_t seq, uint8_t * p_value, uint16_t value_length);
-
-// ---------------------------Push_back.--------------------------
-// TODO: delete
-Shared_MCB_Wrapper update_shared_array(int16_t key, void* p_array, uint16_t array_size, Shared_Value_Type container_type, Shared_Value_Type node_type);
 
 void shared_list_push_back(int16_t key, void* p_value, uint16_t value_length);
 
@@ -66,22 +44,15 @@ uint8_t* shared_list_remove(int16_t key, uint8_t* p_node);
 
 void shared_fifo_pop(int16_t key);
 
-
-// ---------------------------look up dict-------------------------
-Shared_MCB_Wrapper get_shared_mcb_info(int16_t key);
-
-// Check if key is existed. Return true if successed to find key.
-// Argus: int16_t key.
-bool shared_key_existed(int16_t key);
-
 // ---------------------------Get Value.--------------------------
 
 uint8_t* get_shared_array_value(int16_t key, uint16_t seq);
-//
-//uint8_t* get_shared_list_value(int16_t key, uint16_t seq);
-//
-//uint8_t* get_shared_fifo_value(int16_t key, uint16_t seq);
 
+uint8_t* shared_list_move_forward(int16_t key, uint8_t* p_current_node);
+
+uint8_t* shared_fifo_front(int16_t key);
+
+uint8_t* shared_fifo_back(int16_t key);
 
 // ---------------------------Get Ref.--------------------------
 
@@ -100,19 +71,22 @@ uint8_t* ref_shared_fifo(int16_t key);
 
 // ---------------------------Dict Control.--------------------------
 uint16_t shared_basic_dict_append(Shared_Basic_Pair new_pair);
-
 uint16_t shared_container_dict_append(Shared_Container_Pair new_pair);
+
+// ---------------------------look up dict-------------------------
+Shared_MCB_Wrapper get_shared_mcb_info(int16_t key);
+
+// Check if key is existed. Return true if successed to find key.
+// Argus: int16_t key.
+bool shared_key_existed(int16_t key);
+
 // ---------------------------Area Control.--------------------------
-// TODO:
 uint8_t* shared_malloc(uint16_t size);
 
 // TODO:
 void shared_free(void* pointer);
 
-// Write shared area.
-// Argus: p_dest.
-//				p_source.
-//        value_length.
+
 void* shared_area_cpy(void* p_dest, void* p_source, uint16_t value_length);
 
 

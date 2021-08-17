@@ -168,7 +168,7 @@ Shared_MCB_Wrapper shared_array_init(int16_t key, uint16_t array_size, Shared_Va
 					{
 						// TODO: Write data in area
 						//if (write_in_shared_area(p_dest, p_array, array_length))
-						Shared_Container_MCB container_mcb = { p_dest, container_type, node_type, 0 , array_size };
+						Shared_Container_MCB container_mcb = { p_dest, container_type, node_type, array_size, array_size };
 						Shared_Container_Pair container_pair = { key, container_mcb };
 
 						int16_t key_seq = shared_container_dict_append(container_pair);
@@ -946,7 +946,50 @@ bool shared_key_existed(int16_t shared_key)
 
 uint8_t * get_shared_array_value(int16_t key, uint16_t seq)
 {
-	return nullptr;
+	uint8_t* result = NULL;
+	//Shared_MCB_Wrapper result =
+	//{
+	//	-1,           	// int16_t unique_key
+	//	NULL,         	// void *p_begin
+	//	unknown_dict, 	// Shared_Dict_Type dict_type
+	//	0,           	// int16_t key_seq
+	//	unknown_type, 	// Shared_Value_Type value_type
+	//	unknown_type, 	// Shared_Value_Type item_type
+	//	0,            	// uint8_t container_size
+	//	0             	// uint8_t container_capacity
+	//};
+	Shared_MCB_Wrapper curr_mcb_info = get_shared_mcb_info(key);
+
+	if (curr_mcb_info.unique_key != -1) // key existed
+	{
+		if (curr_mcb_info.value_type == shared_array_t)
+		{
+			if (seq < curr_mcb_info.container_size)
+			{
+				uint16_t node_length = get_basic_type_length(curr_mcb_info.item_type);
+				uint8_t* p_dest = curr_mcb_info.p_value_begin + seq * node_length;
+
+				result = p_dest;
+
+			}
+			else
+			{
+				printf("failed to set: overflow. array size is %d.\n", curr_mcb_info.container_size);
+			}
+
+		}
+		else
+		{
+			printf("failed to set: container type error.\n");
+		}
+	}
+	else
+	{
+		printf("failed to set: no key\n");
+	}
+
+	return result;
+
 }
 
 // ------------------------------------------------Get Value.---------------------------------------------------
@@ -1244,84 +1287,6 @@ uint16_t available_shared_area_size()
 Shared_MCB_Wrapper update_shared_container_value(int16_t key, void* p_source, uint16_t length, Shared_Value_Type container_type, Shared_Value_Type node_type)
 {
 	Shared_MCB_Wrapper result = { -1, NULL, unknown_dict, 0, unknown_type, unknown_type, 0, 0 };
-
-	return result;
-}
-
-Shared_MCB_Wrapper update_shared_array(int16_t key, void * p_array, uint16_t array_size, Shared_Value_Type container_type, Shared_Value_Type node_type)
-{
-	Shared_MCB_Wrapper result = { -1, NULL, unknown_dict, 0, unknown_type, unknown_type, 0, 0 };
-	Shared_MCB_Wrapper curr_mcb_info = get_shared_mcb_info(key);
-
-	if (curr_mcb_info.unique_key == -1) // no key
-	{
-		if (available_container_dict_size() > 0)
-		{
-			uint16_t node_length = (uint16_t)(get_basic_type_length(node_type));
-			uint16_t array_length = node_length * array_size;
-
-			//TODO: allocate.
-			uint8_t* p_dest = shared_malloc(array_length);
-
-			if (p_dest != NULL)
-			{
-				// TODO: Write data in area
-				if (shared_area_cpy(p_dest, p_array, array_length))
-				{
-					Shared_Container_MCB container_mcb = { p_dest, container_type, node_type,  array_size , array_size };
-					Shared_Container_Pair container_pair = { key, container_mcb };
-					global_shared_dict.shared_container_dict.shared_dict[global_shared_dict.shared_container_dict.dict_size] = container_pair;
-
-					result.unique_key = key;
-					result.p_value_begin = p_dest;
-					result.value_type = container_type;
-					result.item_type = node_type;
-					result.dict_type = shared_container_dict;
-					result.key_seq_in_dict = global_shared_dict.shared_basic_dict.dict_size;
-
-					// Update size of basic dict.
-					global_shared_dict.shared_container_dict.dict_size += 1;
-					printf("success to update new key_value.\n");
-				}
-			}
-			else
-			{
-				printf("failed to append dict: failed to allocate memory\n");
-			}
-		}
-		else
-		{
-			printf("fail to append dict: no available field.\n");
-		}
-	}
-	else // existed
-	{
-		if (curr_mcb_info.dict_type == shared_container_dict && curr_mcb_info.value_type == container_type && curr_mcb_info.item_type == node_type)
-		{
-			if (curr_mcb_info.container_size == array_size)
-			{
-				uint16_t node_length = (uint16_t)(get_basic_type_length(node_type));
-				uint16_t array_length = node_length * array_size;
-
-				void* p_dest = curr_mcb_info.p_value_begin;
-
-				if (shared_area_cpy(p_dest, p_array, array_length))
-				{
-					printf("success to update existed key_value.\n");
-					result = curr_mcb_info;
-				}
-
-			}
-			else
-			{
-				printf("Error array size: expected array size is %d.\n", curr_mcb_info.container_size);
-			}
-		}
-		else
-		{
-			printf("Error Value Type: expected value type is %d.\n", curr_mcb_info.value_type);
-		}
-	}
 
 	return result;
 }

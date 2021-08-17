@@ -255,6 +255,35 @@ namespace SharedDataUT
 				seq++;
 				p_list_reader = shared_list_move_forward(list_key, p_list_reader);
 			}
+
  		}
+		TEST_METHOD(Test5_Shared_Array_Update_Get)
+		{
+			shared_area_init();
+			int16_t array_key = 1;
+			shared_array_init(0, 3, shared_array_t, shared_int32_t);
+			shared_array_init(array_key, 3, shared_array_t, shared_int32_t);
+
+			int32_t array_value[3] = { 1,2,3 };
+
+			for (int i = 0; i < 3; i++)
+			{
+				shared_array_update(array_key, (uint8_t)(i), array_value + i, sizeof(int32_t));
+			}
+
+			Shared_MCB_Wrapper mcb_arr = get_shared_mcb_info(array_key);
+			uint16_t value_length = get_basic_type_length(mcb_arr.item_type);
+			for (int i = 0; i < 3; i++)
+			{
+				uint8_t* p_value = get_shared_array_value(array_key, i);
+				int32_t value = *(int32_t*)(p_value);
+				Assert::AreEqual(value, array_value[i]);
+			}
+		}
+
+		TEST_METHOD(Test6_Shared_FIFO_Update_Get)
+		{
+			shared_area_init();
+		}
 	};
 }
