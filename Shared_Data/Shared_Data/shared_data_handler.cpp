@@ -328,7 +328,7 @@ Shared_MCB_Wrapper shared_fifo_init(int16_t key, uint16_t max_fifo_size, Shared_
 				{
 					uint16_t fifo_length = node_length * max_fifo_size;
 
-					Shared_FIFO_Director fifo_director = { 0, 0 };
+					Shared_FIFO_Director fifo_director = { 0 };
 					uint16_t memo_length = sizeof(fifo_director) + fifo_length;
 
 					//TODO: allocate.
@@ -607,7 +607,8 @@ uint8_t* shared_fifo_back(int16_t key)
 				uint8_t* p_reader = p_begin + sizeof(Shared_FIFO_Director);
 
 				uint16_t node_length = get_basic_type_length(curr_mcb_info.item_type);
-				result = p_reader + node_length * (p_fifo_director->tail_seq);
+				uint16_t tail_seq = (p_fifo_director->head_seq + curr_mcb_info.container_size - 1) % curr_mcb_info.container_capacity;
+				result = p_reader + node_length * tail_seq;
 			}
 			else
 			{
@@ -635,48 +636,56 @@ void shared_list_push_back(int16_t key, void* p_value, uint16_t value_length)
 	{
 		if (curr_mcb_info.value_type == shared_list_t)
 		{
-			if (curr_mcb_info.container_capacity > curr_mcb_info.container_size)
+			if (value_length == get_basic_type_length(curr_mcb_info.item_type))
 			{
-				uint8_t* p_begin = curr_mcb_info.p_value_begin;
-				uint16_t list_size = curr_mcb_info.container_size;
-
-				// TODO: read from area.
-				Shared_List_Director* p_director = (Shared_List_Director*)(p_begin);
-
-				uint8_t* p_write_dest = p_director->p_free_hub;
-				uint8_t* p_write_dest_next = shared_list_move_forward(key, p_write_dest);
-				p_director->p_free_hub = p_write_dest_next;
-
-				
-				// write new value.
-				shared_area_cpy(p_write_dest, p_value, value_length);
-				uint8_t* p_end = NULL;
-				shared_area_cpy(p_write_dest + value_length, &p_end, sizeof(uint8_t*));
-				
-				
-				uint8_t* p_active_curr = p_director->p_active_hub;
-				if (p_active_curr == NULL)
+				if (curr_mcb_info.container_capacity > curr_mcb_info.container_size)
 				{
-					p_director->p_active_hub = p_write_dest;
+					uint8_t* p_begin = curr_mcb_info.p_value_begin;
+					uint16_t list_size = curr_mcb_info.container_size;
+
+					// TODO: read from area.
+					Shared_List_Director* p_director = (Shared_List_Director*)(p_begin);
+
+					uint8_t* p_write_dest = p_director->p_free_hub;
+					uint8_t* p_write_dest_next = shared_list_move_forward(key, p_write_dest);
+					p_director->p_free_hub = p_write_dest_next;
+
+
+					// write new value.
+					shared_area_cpy(p_write_dest, p_value, value_length);
+					uint8_t* p_end = NULL;
+					shared_area_cpy(p_write_dest + value_length, &p_end, sizeof(uint8_t*));
+
+
+					uint8_t* p_active_curr = p_director->p_active_hub;
+					if (p_active_curr == NULL)
+					{
+						p_director->p_active_hub = p_write_dest;
+					}
+					else
+					{
+						uint8_t* p_active_next = shared_list_move_forward(key, p_active_curr);
+						while (p_active_next != NULL)
+						{
+							p_active_curr = p_active_next;
+							p_active_next = shared_list_move_forward(key, p_active_curr);
+						}
+						uint8_t* p_active_previous_end = p_active_curr;
+						shared_area_cpy(p_active_previous_end + value_length, &p_write_dest, sizeof(uint8_t*));
+					}
+
+					global_shared_dict.shared_container_dict.shared_dict[curr_mcb_info.key_seq_in_dict].mcb.container_size += 1;
 				}
 				else
 				{
-					uint8_t* p_active_next = shared_list_move_forward(key, p_active_curr);
-					while (p_active_next != NULL)
-					{
-						p_active_curr = p_active_next;
-						p_active_next = shared_list_move_forward(key, p_active_curr);
-					}
-					uint8_t* p_active_previous_end = p_active_curr;
-					shared_area_cpy(p_active_previous_end + value_length, &p_write_dest, sizeof(uint8_t*));
+					printf("failed to push back: list is full.\n");
 				}
-
-				global_shared_dict.shared_container_dict.shared_dict[curr_mcb_info.key_seq_in_dict].mcb.container_size += 1;
 			}
 			else
 			{
-				printf("failed to push back: list is full.\n");
+				printf("failed to update: node type error.\n");
 			}
+
 		}
 		else
 		{
@@ -689,44 +698,54 @@ void shared_list_push_back(int16_t key, void* p_value, uint16_t value_length)
 	}
 }
 
-void shared_fifo_push_back(int16_t key, uint8_t* p_value, uint16_t value_length)
+void shared_fifo_push_back(int16_t key, void* p_value, uint16_t value_length)
 {
 	Shared_MCB_Wrapper curr_mcb_info = get_shared_mcb_info(key);
 	if (curr_mcb_info.unique_key != -1) // key existed
 	{
 		if (curr_mcb_info.value_type == shared_fifo_t)
 		{
-			if (curr_mcb_info.container_capacity >= curr_mcb_info.container_size)
+			if (value_length == get_basic_type_length(curr_mcb_info.item_type))
 			{
-				uint8_t* p_begin = curr_mcb_info.p_value_begin;
-
-				Shared_FIFO_Director* p_fifo_director = (Shared_FIFO_Director*)(p_begin);
-
-
-				uint16_t head_seq = (uint16_t)(p_fifo_director->head_seq);
-				uint16_t tail_seq = (uint16_t)(p_fifo_director->tail_seq);
-				uint16_t capacity = (uint16_t)(curr_mcb_info.container_capacity);
-
-				uint16_t dest_seq = (tail_seq + 1) & capacity;
-				uint8_t* p_fifo_begin = p_begin + sizeof(Shared_FIFO_Director);
-				uint16_t node_length = get_basic_type_length(curr_mcb_info.item_type);
-				uint8_t* p_dest = p_fifo_begin + node_length * dest_seq;
-
-				uint8_t new_tail_seq = (uint8_t)(dest_seq);
-				shared_area_cpy(p_begin + sizeof(uint8_t), &new_tail_seq, sizeof(uint8_t));
-				
-				if (curr_mcb_info.container_capacity == curr_mcb_info.container_size)
+				if (curr_mcb_info.container_capacity >= curr_mcb_info.container_size)
 				{
-					uint8_t new_head_seq = (uint8_t)((head_seq + 1) % capacity);
-					shared_area_cpy(p_begin, &new_head_seq, sizeof(uint8_t));
-				}
+					uint8_t* p_begin = curr_mcb_info.p_value_begin;
 
-				global_shared_dict.shared_container_dict.shared_dict[curr_mcb_info.key_seq_in_dict].mcb.container_size += 1;
+					Shared_FIFO_Director* p_fifo_director = (Shared_FIFO_Director*)(p_begin);
+
+
+					uint16_t head_seq = (uint16_t)(p_fifo_director->head_seq);
+					//uint16_t tail_seq = (uint16_t)(p_fifo_director->tail_seq);
+					uint16_t capacity = (uint16_t)(curr_mcb_info.container_capacity);
+
+					uint8_t* p_fifo_begin = p_begin + sizeof(Shared_FIFO_Director);
+					uint16_t node_length = get_basic_type_length(curr_mcb_info.item_type);
+					uint16_t new_value_seq = (head_seq + curr_mcb_info.container_size) % capacity;
+					uint8_t* p_dest = p_fifo_begin + node_length * new_value_seq;
+					shared_area_cpy(p_dest, p_value, value_length);
+
+
+					if (curr_mcb_info.container_capacity == curr_mcb_info.container_size)
+					{
+						uint8_t new_head_seq = (uint8_t)((head_seq + 1) % capacity);
+						shared_area_cpy(p_begin, &new_head_seq, sizeof(uint8_t));
+						printf("success to append the latest node: oldest node is covered.\n");
+					}
+					else
+					{
+						global_shared_dict.shared_container_dict.shared_dict[curr_mcb_info.key_seq_in_dict].mcb.container_size += 1;
+					}
+				}
+				else
+				{
+					printf("failed to get: fifo is empty.\n");
+				}
 			}
 			else
 			{
-				printf("failed to get: fifo is empty.\n");
+				printf("failed to update: node type error.\n");
 			}
+
 		}
 		else
 		{
@@ -854,10 +873,22 @@ void shared_fifo_pop(int16_t key)
 			if (curr_mcb_info.container_size > 0)
 			{
 				Shared_FIFO_Director* p_fifo_director = (Shared_FIFO_Director*)(curr_mcb_info.p_value_begin);
-				uint16_t head_seq = (uint16_t)(p_fifo_director->head_seq);
-				uint16_t capacity = (uint16_t)(curr_mcb_info.container_capacity);
+				uint8_t head_seq = p_fifo_director->head_seq;
+				uint8_t capacity = curr_mcb_info.container_capacity;
 				uint8_t new_head_seq = (uint8_t)((head_seq + 1) % capacity);
-				shared_area_cpy(curr_mcb_info.p_value_begin, &new_head_seq, sizeof(uint8_t));
+				shared_area_cpy(curr_mcb_info.p_value_begin, &new_head_seq, sizeof(new_head_seq));
+
+				uint8_t empty = 0;
+				// TODO: equal to 0;
+				uint16_t node_type_lens = get_basic_type_length(curr_mcb_info.item_type);
+				uint8_t* p_cursor = curr_mcb_info.p_value_begin + sizeof(Shared_FIFO_Director) + node_type_lens * head_seq;
+				while (node_type_lens-- > 0)
+				{
+					shared_area_cpy(p_cursor, &empty, 1);
+					p_cursor++;
+				}
+
+				global_shared_dict.shared_container_dict.shared_dict[curr_mcb_info.key_seq_in_dict].mcb.container_size -= 1;
 			}
 			else
 			{

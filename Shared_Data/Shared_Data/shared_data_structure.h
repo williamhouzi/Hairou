@@ -132,7 +132,6 @@ typedef struct Shared_List_Director
 typedef struct Shared_FIFO_Director
 {
 	uint8_t head_seq;
-	uint8_t tail_seq;
 } Shared_FIFO_Director;
 
 

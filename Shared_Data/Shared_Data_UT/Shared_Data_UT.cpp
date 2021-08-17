@@ -181,9 +181,9 @@ namespace SharedDataUT
 				int32_t* p_node = (int32_t*)(p_list_reader);
 				int32_t value = *p_node;
 				Assert::AreEqual(value, node_value[seq]);
+				p_list_reader = shared_list_move_forward(list_key, p_list_reader);
 
 				seq++;
-				p_list_reader = shared_list_move_forward(list_key, p_list_reader);
 			}
 
 			// remove all
@@ -284,6 +284,35 @@ namespace SharedDataUT
 		TEST_METHOD(Test6_Shared_FIFO_Update_Get)
 		{
 			shared_area_init();
+
+			int16_t fifo_key = 2;
+			uint16_t fifo_cap = 3;
+			Shared_MCB_Wrapper init_mcb = shared_fifo_init(fifo_key, fifo_cap, shared_fifo_t, shared_uint16_t);
+
+			uint16_t fifo_value[6] = { 0x1111, 0x2222, 0x3333, 0x4444, 0x5555, 0x6666 };
+			shared_fifo_push_back(fifo_key, fifo_value, sizeof(*fifo_value));
+			shared_fifo_push_back(fifo_key, fifo_value + 1, sizeof(*fifo_value));
+			shared_fifo_push_back(fifo_key, fifo_value + 2, sizeof(*fifo_value));
+			shared_fifo_push_back(fifo_key, fifo_value + 3, sizeof(*fifo_value));
+			shared_fifo_push_back(fifo_key, fifo_value + 4, sizeof(*fifo_value));
+			shared_fifo_push_back(fifo_key, fifo_value + 5, sizeof(*fifo_value));
+
+			uint16_t* front_value = (uint16_t*)(shared_fifo_front(fifo_key));
+			Assert::AreEqual((uint32_t)(fifo_value[3]), (uint32_t)(*front_value));
+
+			uint16_t* back_value = (uint16_t*)(shared_fifo_back(fifo_key));
+			Assert::AreEqual((uint32_t)(fifo_value[5]), (uint32_t)(*back_value));
+
+
+
+			shared_fifo_pop(fifo_key);
+			front_value = (uint16_t*)(shared_fifo_front(fifo_key));
+			Assert::AreEqual((uint32_t)(fifo_value[4]), (uint32_t)(*front_value));
+			
+			Shared_MCB_Wrapper fifo_mcb = get_shared_mcb_info(fifo_key);
+			Assert::AreEqual((uint32_t)(2), (uint32_t)(fifo_mcb.container_size));
+
+
 		}
 	};
 }

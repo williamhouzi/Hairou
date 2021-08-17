@@ -35,7 +35,7 @@ uint8_t* shared_array_update(int16_t key, uint8_t seq, void* p_value, uint16_t v
 
 void shared_list_push_back(int16_t key, void* p_value, uint16_t value_length);
 
-void shared_fifo_push_back(int16_t key, uint8_t* p_value, uint16_t value_length);
+void shared_fifo_push_back(int16_t key, void* p_value, uint16_t value_length);
 
 // ---------------------------Pop/Remove.--------------------------
 // Return next node pointer.
@@ -68,27 +68,12 @@ uint8_t* ref_shared_list(int16_t key);
 
 uint8_t* ref_shared_fifo(int16_t key);
 
-
-// ---------------------------Dict Control.--------------------------
-uint16_t shared_basic_dict_append(Shared_Basic_Pair new_pair);
-uint16_t shared_container_dict_append(Shared_Container_Pair new_pair);
-
 // ---------------------------look up dict-------------------------
 Shared_MCB_Wrapper get_shared_mcb_info(int16_t key);
 
 // Check if key is existed. Return true if successed to find key.
 // Argus: int16_t key.
 bool shared_key_existed(int16_t key);
-
-// ---------------------------Area Control.--------------------------
-uint8_t* shared_malloc(uint16_t size);
-
-// TODO:
-void shared_free(void* pointer);
-
-
-void* shared_area_cpy(void* p_dest, void* p_source, uint16_t value_length);
-
 
 // ---------------------------Tools.--------------------------
 // Get vlaue length 
@@ -102,6 +87,17 @@ uint16_t available_container_dict_size(void);
 
 // Get available size in shared area. Return size.
 uint16_t available_shared_area_size(void);
+
+
+// ---------------------------Private----------------------------------
+// ---------------------------Dict Control.--------------------------
+uint16_t shared_basic_dict_append(Shared_Basic_Pair new_pair);
+uint16_t shared_container_dict_append(Shared_Container_Pair new_pair);
+// ---------------------------Area Control.--------------------------
+uint8_t* shared_malloc(uint16_t size);
+// TODO:
+void shared_free(void* pointer);
+void* shared_area_cpy(void* p_dest, void* p_source, uint16_t value_length);
 
 #endif
 
