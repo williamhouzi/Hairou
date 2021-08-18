@@ -115,46 +115,11 @@ typedef struct Shared_List_Director
 	uint8_t* p_active_hub;
 } Shared_List_Director;
 
-//typedef struct Shared_List_Reader_Node
-//{
-//	void* p_curr_value;
-//	uint16_t value_length;
-//	struct Shared_List_Reader_Node* p_next_node;
-//} Shared_List_Reader_Node;
-//
-//typedef struct Shared_List_Reader
-//{
-//	uint16_t node_num;
-//	Shared_List_Reader_Node* p_reader_header;
-//} Shared_List_Reader;
-
 // fifo
 typedef struct Shared_FIFO_Director
 {
 	uint8_t head_seq;
 } Shared_FIFO_Director;
-
-
-
-
-
-
-// struct
-
-// version 2
-//typedef struct Shared_Value_Info_Node
-//{
-//	void *p_begin;
-//	Shared_Value_Type value_type;
-//	Shared_Value_Type element_value_type;
-//	struct Shared_Value_Info_Node * next;
-//} Shared_Value_Info_Node;
-
-//typedef struct Shared_Value_Info_List
-//{
-//	uint8_t nodeSeq;
-//	Shared_Value_Info_Node value_info;
-//} Shared_Value_Info_List;
 
 
 typedef struct Shared_Area

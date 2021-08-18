@@ -3,25 +3,7 @@
 
 
 
-//Shared_Basic_Value_Info init_basic_info = {NULL,unknown_type};
-//Shared_Basic_Pair init_pair= {0,{NULL,unknown_type}};
-
-//Shared_Container_Value_Info init_container_info = {NULL, unknown_type, unknown_type, 0, 0};
-//Shared_Container_Pair init_container_pair = {-1,{NULL, unknown_type, unknown_type, 0, 0}};
-
-//Shared_Basic_Dict t_shared_basic_dict = {{-1,{NULL,unknown_type}},0};
-//Shared_Container_Dict init_container_dict = {{-1,{NULL, unknown_type, unknown_type, 0, 0}},0};
-
-// Global Shared data def
-//Shared_Dict global_shared_dict = {{{-1,{NULL,unknown_type}},0}, {{-1,{NULL, unknown_type, unknown_type, 0, 0}},0}};
-//Shared_Area global_shared_area = { {0},0, global_shared_area.shared_area, global_shared_area.shared_area };
-Shared_Dict global_shared_dict;
 Shared_Area global_shared_area;
-
-// ??how to init and allocate array?? 
-// allocate index and area;
-// set pRead and pWrite;
-
 
 // ------------------------------------------------Init.-------------------------------------------------------
 void shared_area_init(void)
@@ -41,8 +23,6 @@ void shared_area_init(void)
 
 	global_shared_area.area_capacity = SHARED_AREA_MAX_SIZE;
 	global_shared_area.area_size = 0;
-	//global_shared_area.p_begin = global_shared_area.shared_area;
-	//global_shared_area.p_end = global_shared_area.shared_area + 1;
 }
 
 
@@ -237,7 +217,6 @@ Shared_MCB_Wrapper shared_list_init(int16_t key, uint16_t max_list_size, Shared_
 
 					if (p_dest != NULL)
 					{
-						uint8_t* p_writer = p_dest;
 						p_director.p_free_hub = p_dest + sizeof(p_director);
 						p_director.p_active_hub = NULL;
 						shared_area_cpy(p_dest, &p_director, sizeof(p_director));
@@ -649,7 +628,6 @@ void shared_list_push_back(int16_t key, void* p_value, uint16_t value_length)
 				if (curr_mcb_info.container_capacity > curr_mcb_info.container_size)
 				{
 					uint8_t* p_begin = curr_mcb_info.p_value_begin;
-					uint16_t list_size = curr_mcb_info.container_size;
 
 					// TODO: read from area.
 					Shared_List_Director* p_director = (Shared_List_Director*)(p_begin);
