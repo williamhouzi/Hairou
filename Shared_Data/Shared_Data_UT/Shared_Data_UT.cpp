@@ -338,5 +338,30 @@ namespace SharedDataUT
 			Assert::AreEqual((uint32_t)(value2), (uint32_t)(*(uint16_t*)(p_real_value2)));
 			Assert::AreEqual((double)(value3), *(double*)(p_real_value3));
 		}
+
+		TEST_METHOD(Test8_Struct_Update_Get)
+		{
+			shared_area_init();
+
+			struct Test_Value
+			{
+				int v1;
+				double v2;
+				uint8_t v3;
+			};
+			int16_t struct_key = 3;
+
+			Test_Value value_ut = { 1, 2.2, 0x33 };
+			Shared_MCB_Wrapper init_mcb = shared_struct_init(struct_key, sizeof(Test_Value), shared_struct_t);
+			update_shared_struct(struct_key, &value_ut, sizeof(value_ut));
+
+			uint8_t* ref_struct_v = ref_shared_struct(struct_key);
+			Test_Value* p_value = (Test_Value*)(ref_struct_v);
+
+			Assert::AreEqual(value_ut.v1, p_value->v1);
+			Assert::AreEqual(value_ut.v2, p_value->v2);
+			Assert::AreEqual((uint32_t)(value_ut.v3), (uint32_t)(p_value->v3));
+		}
+
 	};
 }
