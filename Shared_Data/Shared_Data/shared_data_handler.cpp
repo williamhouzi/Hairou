@@ -2,7 +2,7 @@
 #include "shared_data_structure.h"
 
 
-
+Shared_Dict global_shared_dict;
 Shared_Area global_shared_area;
 
 // ------------------------------------------------Init.-------------------------------------------------------

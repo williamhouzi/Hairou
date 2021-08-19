@@ -7,6 +7,9 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 //#define ALIGNMENT 1
 //#pragma pack(ALIGNMENT)   
 
+//extern Shared_Dict global_shared_dict;
+//extern Shared_Area global_shared_area;
+
 namespace SharedDataUT
 {
 	TEST_CLASS(SharedDataUT)
